@@ -30,11 +30,55 @@
         border: 1px solid rgba(120, 150, 255, 0.2);
         touch-action: none;
       }
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        background: #05060d;
+        z-index: 10;
+        transition: opacity 0.4s ease;
+      }
+      #loading.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #loading .square {
+        width: 28px;
+        height: 28px;
+        background: #e6e9ff;
+        box-shadow: 0 0 24px rgba(120, 150, 255, 0.8);
+        animation: spin 1.2s ease-in-out infinite;
+      }
+      #loading .label {
+        font-size: 14px;
+        letter-spacing: 0.35em;
+        text-transform: uppercase;
+        color: rgba(230, 233, 255, 0.7);
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg) scale(1);
+        }
+        50% {
+          transform: rotate(180deg) scale(0.6);
+        }
+        100% {
+          transform: rotate(360deg) scale(1);
+        }
+      }
     </style>
   </head>
   <body>
     <div id="app">
       <canvas id="game"></canvas>
+    </div>
+    <div id="loading">
+      <div class="square"></div>
+      <div class="label">Loading</div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

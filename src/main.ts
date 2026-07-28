@@ -15,3 +15,9 @@ const loop = new Loop(
   () => game.render(),
 );
 loop.start();
+
+const loading = document.getElementById("loading");
+if (loading) {
+  loading.classList.add("done");
+  loading.addEventListener("transitionend", () => loading.remove(), { once: true });
+}
