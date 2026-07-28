@@ -1,0 +1,47 @@
+/**
+ * Global tuning constants. Gameplay is authored against a fixed logical
+ * resolution; the canvas is scaled to fit the window in the Renderer.
+ */
+
+/** Display title. */
+export const TITLE = "SQUARE TO THE RESCUE";
+export const SUBTITLE = "STTR";
+
+/**
+ * Every drawable actor and its bullets share a shape. The player (and its
+ * shots) are always squares; enemies are anything BUT squares, and their
+ * bullets copy their shape — so the player can read friend vs. foe at a glance.
+ */
+export type Shape = "square" | "circle" | "triangle" | "diamond" | "pentagon" | "hexagon" | "star";
+
+/** Shapes enemies/bosses are allowed to use (never "square"). */
+export const ENEMY_SHAPES: readonly Shape[] = ["circle", "triangle", "diamond", "pentagon", "hexagon", "star"];
+
+/** Logical play-field width in pixels. */
+export const WIDTH = 480;
+/** Logical play-field height in pixels. */
+export const HEIGHT = 720;
+
+/** Fixed simulation step in seconds (60 Hz). Bullet patterns assume this. */
+export const DT = 1 / 60;
+/** Upper bound on sub-steps per frame so a stall can't spiral. */
+export const MAX_STEPS = 5;
+
+/** Neon-ish palette used across renderer + UI. */
+export const COLORS = {
+  bg: "#05060d",
+  bgGrid: "rgba(80, 120, 255, 0.05)",
+  player: "#6cf0ff",
+  playerCore: "#ffffff",
+  hurtbox: "#ff3b6b",
+  playerBullet: "#aef7ff",
+  enemy: "#ff5bd0",
+  enemyBullet: "#ffcf5b",
+  boss: "#ff6b6b",
+  bossBullet: "#ff9a3b",
+  text: "#e6e9ff",
+  textDim: "rgba(230, 233, 255, 0.6)",
+  accent: "#8f7bff",
+  good: "#7bffca",
+  eat: "#ff9d5c",
+} as const;
