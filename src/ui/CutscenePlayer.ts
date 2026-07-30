@@ -10,7 +10,13 @@ const BOX_H = 130;
 const BOX_Y = HEIGHT - BOX_H - 70;
 const PORTRAIT_Y = BOX_Y - 140;
 const PORTRAIT_R = 62;
+/** Portraits shrink and split apart when a side has to hold more than one. */
+const PORTRAIT_R_CROWDED = 46;
+const PORTRAIT_SPLIT = 48; // px each way from the side's centre
 const TEXT_SIZE = 16;
+/** How far out of focus the scene behind the dialog is pushed. */
+const BACKDROP_BLUR = 7;
+const BACKDROP_DIM = "rgba(5,6,13,0.72)";
 
 /**
  * Plays one Cutscene: the frozen world sits behind a dim overlay while shape
@@ -45,9 +51,17 @@ export class CutscenePlayer {
     const line = this.scene.lines[this.line];
     const speaker = this.scene.actors.find((a) => a.id === line.actor);
 
-    r.overlay("rgba(5,6,13,0.62)");
+    // Push whatever is behind (the room, or Bar's counter) out of focus, then
+    // dim it. Blur alone leaves bright UI competing with the dialog; dim alone
+    // leaves it legible enough to read past the portraits.
+    r.blurBackdrop(BACKDROP_BLUR);
+    r.overlay(BACKDROP_DIM);
 
-    for (const actor of this.scene.actors) this.portrait(r, actor, actor === speaker);
+    // Draw the listeners first so the speaker always stands in front of them —
+    // it matters when a side is holding two characters (Prism and Astra).
+    const actors = this.scene.actors;
+    for (const actor of actors) if (actor !== speaker) this.portrait(r, actor, false, actors);
+    if (speaker) this.portrait(r, speaker, true, actors);
 
     // Dialog box.
     r.rect(BOX_X, BOX_Y, BOX_W, BOX_H, "rgba(8,10,22,0.92)");
@@ -74,18 +88,29 @@ export class CutscenePlayer {
     }
   }
 
-  private portrait(r: Renderer, actor: CutsceneActor, speaking: boolean): void {
-    const x = actor.side === "left" ? 115 : WIDTH - 115;
+  /**
+   * One portrait. A side normally holds a single character at full size; when
+   * a scene puts two on the same side they shrink and split apart so both stay
+   * legible (and neither covers the other).
+   */
+  private portrait(r: Renderer, actor: CutsceneActor, speaking: boolean, all: CutsceneActor[]): void {
+    const side = all.filter((a) => a.side === actor.side);
+    const slot = side.indexOf(actor);
+    const crowded = side.length > 1;
+    const radius = crowded ? PORTRAIT_R_CROWDED : PORTRAIT_R;
+    const offset = crowded ? (slot - (side.length - 1) / 2) * PORTRAIT_SPLIT * 2 : 0;
+
+    const x = (actor.side === "left" ? 115 : WIDTH - 115) + offset;
     const y = PORTRAIT_Y + (speaking ? Math.sin(performance.now() / 280) * 4 : 0);
     const ctx = r.ctx;
     ctx.save();
     ctx.globalAlpha = speaking ? 1 : 0.22;
     if (speaking) {
-      r.glowShape(actor.shape, x, y, PORTRAIT_R, 0, actor.color, 26);
+      r.glowShape(actor.shape, x, y, radius, 0, actor.color, 26);
     } else {
-      r.fillShape(actor.shape, x, y, PORTRAIT_R, 0, actor.color);
+      r.fillShape(actor.shape, x, y, radius, 0, actor.color);
     }
-    r.strokeShape(actor.shape, x, y, PORTRAIT_R, 0, "rgba(255,255,255,0.55)", 2);
+    r.strokeShape(actor.shape, x, y, radius, 0, "rgba(255,255,255,0.55)", 2);
     ctx.restore();
   }
 

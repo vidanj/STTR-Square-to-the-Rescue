@@ -1,4 +1,5 @@
 import { COLORS, HEIGHT, WIDTH } from "../config";
+import { SHAPE_COLOR } from "../content/stagekit";
 import { STAGES, type Difficulty } from "../content/stages";
 import type { Input } from "../core/Input";
 import type { RunState } from "../core/RunState";
@@ -21,6 +22,11 @@ const TIER_LABEL: Record<Difficulty, string> = {
   hard: "HARD",
   boss: "FINAL BOSS",
 };
+
+/** The Bar reads as its own thing on the map: Bar's own colour and label. */
+const SHOP_COLOR = SHAPE_COLOR.rect;
+const SHOP_NAME = "THE BAR";
+const SHOP_LABEL = "SHOP — SPEND YOUR SCORE";
 
 const NODE_R = 20;
 const TOP_Y = 150; // boss layer
@@ -127,24 +133,30 @@ export class MapScreen {
     pulse: number,
   ): void {
     const [x, y] = this.pos(map, node);
-    const stage = STAGES[node.stageId];
-    const tier = TIER_COLOR[stage.difficulty];
+    const shop = node.kind === "shop";
+    const stage = shop ? null : STAGES[node.stageId];
+    const tier = stage ? TIER_COLOR[stage.difficulty] : SHOP_COLOR;
     const reachable = reach.includes(node);
     const dim = node.cleared || (!reachable && node.id !== map.current);
 
     // Room ring, tinted by difficulty; cleared/unreachable rooms fade back.
     r.ring(x, y, NODE_R, dim ? "rgba(230,233,255,0.18)" : tier, node.id === map.current ? 3 : 2);
 
-    // Preview: the enemy shapes waiting inside (up to 3 fit in the ring).
-    const shapes = stage.preview.slice(0, 3);
-    const gap = 12;
-    const startX = x - ((shapes.length - 1) * gap) / 2;
-    shapes.forEach((shape, i) => {
-      const color = dim ? "rgba(230,233,255,0.25)" : tier;
-      r.fillShape(shape, startX + i * gap, y, shape === "star" ? 7 : 5, 0, color);
-    });
-    if (stage.preview.length > 3 && !dim) {
-      r.text("+", x + NODE_R - 4, y - NODE_R + 6, { size: 12, bold: true, color: tier });
+    if (stage) {
+      // Preview: the enemy shapes waiting inside (up to 3 fit in the ring).
+      const shapes = stage.preview.slice(0, 3);
+      const gap = 12;
+      const startX = x - ((shapes.length - 1) * gap) / 2;
+      shapes.forEach((shape, i) => {
+        const color = dim ? "rgba(230,233,255,0.25)" : tier;
+        r.fillShape(shape, startX + i * gap, y, shape === "star" ? 7 : 5, 0, color);
+      });
+      if (stage.preview.length > 3 && !dim) {
+        r.text("+", x + NODE_R - 4, y - NODE_R + 6, { size: 12, bold: true, color: tier });
+      }
+    } else {
+      // The Bar: Bar's own silhouette, so a shop is unmistakable at a glance.
+      r.fillShape("rect", x, y, 11, 0, dim ? "rgba(230,233,255,0.25)" : tier);
     }
 
     if (node.cleared) {
@@ -161,8 +173,9 @@ export class MapScreen {
 
   private infoPanel(r: Renderer, selected: MapNode | undefined): void {
     if (!selected) return;
-    const stage = STAGES[selected.stageId];
-    const tier = TIER_COLOR[stage.difficulty];
+    const shop = selected.kind === "shop";
+    const stage = shop ? null : STAGES[selected.stageId];
+    const tier = stage ? TIER_COLOR[stage.difficulty] : SHOP_COLOR;
     const y = HEIGHT - 112;
 
     r.rect(40, y, WIDTH - 80, 58, "rgba(255,255,255,0.06)");
@@ -170,8 +183,16 @@ export class MapScreen {
     r.ctx.lineWidth = 2;
     r.ctx.strokeRect(40, y, WIDTH - 80, 58);
 
-    r.text(stage.name, 56, y + 24, { size: 16, bold: true, color: tier });
-    r.text(TIER_LABEL[stage.difficulty], 56, y + 44, { size: 12, color: COLORS.textDim });
+    r.text(stage ? stage.name : SHOP_NAME, 56, y + 24, { size: 16, bold: true, color: tier });
+    r.text(stage ? TIER_LABEL[stage.difficulty] : SHOP_LABEL, 56, y + 44, {
+      size: 12,
+      color: COLORS.textDim,
+    });
+
+    if (!stage) {
+      r.fillShape("rect", WIDTH - 70, y + 29, 15, 0, tier, "rgba(255,255,255,0.4)");
+      return;
+    }
 
     // Full enemy roster for the selected room, right-aligned in the panel.
     const gap = 18;

@@ -57,8 +57,16 @@ export class WaveManager {
         if (this.timer <= 0) this.advance();
         return "none";
       case "boss":
-        if (!this.world.boss || !this.world.boss.alive) return "win";
-        return "none";
+        if (this.world.boss && this.world.boss.alive) return "none";
+        // A stage can chain more events after a boss — an escaped mini-boss is
+        // fought as a prelude to the real finale, so only the LAST encounter
+        // clears the room.
+        if (this.index + 1 < this.events.length) {
+          this.world.boss = null;
+          this.advance();
+          return "none";
+        }
+        return "win";
       case "done":
         return "win";
     }

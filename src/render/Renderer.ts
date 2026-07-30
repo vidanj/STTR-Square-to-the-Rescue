@@ -1,5 +1,10 @@
 import { COLORS, HEIGHT, WIDTH, type Shape } from "../config";
 
+/** Unit corners of the `rect` shape, and how squat it is relative to its width. */
+const RECT_X = [-1, 1, 1, -1];
+const RECT_Y = [-1, -1, 1, 1];
+const RECT_ASPECT = 0.42;
+
 /**
  * Owns the canvas + 2D context and all low-level drawing. Everything that wants
  * to appear on screen goes through the helpers here so the neon look (radial
@@ -126,6 +131,23 @@ export class Renderer {
         const px = x + Math.cos(a) * rr;
         const py = y + Math.sin(a) * rr;
         i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      return;
+    }
+    if (shape === "rect") {
+      // A stretched square: wide and short, so Bar reads as a bar.
+      const hw = r;
+      const hh = r * RECT_ASPECT;
+      const cos = Math.cos(rot);
+      const sin = Math.sin(rot);
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const px = RECT_X[i] * hw;
+        const py = RECT_Y[i] * hh;
+        const cx = x + px * cos - py * sin;
+        const cy = y + px * sin + py * cos;
+        i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
       }
       ctx.closePath();
       return;
@@ -261,5 +283,26 @@ export class Renderer {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.fillStyle = color;
     this.ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  }
+
+  /**
+   * Blur everything already drawn, by painting the canvas back onto itself
+   * through a blur filter. Used to push a screen (a room, the shop counter)
+   * out of focus behind a dialog so the two don't fight for attention.
+   *
+   * The copy is drawn slightly oversized because a blur samples the
+   * transparent space past the edges, which would otherwise darken the border.
+   * No-ops where canvas filters aren't supported — callers dim on top anyway.
+   */
+  blurBackdrop(radius = 6): void {
+    const { ctx } = this;
+    if (!("filter" in ctx)) return;
+    const bleed = radius * 2;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.filter = `blur(${radius}px)`;
+    ctx.drawImage(this.canvas, -bleed, -bleed, WIDTH + bleed * 2, HEIGHT + bleed * 2);
+    ctx.filter = "none";
+    ctx.restore();
   }
 }

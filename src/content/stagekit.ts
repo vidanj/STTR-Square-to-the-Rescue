@@ -40,6 +40,7 @@ export const SHAPE_COLOR: Record<Shape, string> = {
   pentagon: COLORS.good,
   hexagon: "#ffd76b",
   star: COLORS.boss,
+  rect: COLORS.eat, // Bar, the shopkeeper — never an enemy
 };
 
 type GroupExtra = { sway?: number; r?: number; score?: number; entrySpeed?: number };

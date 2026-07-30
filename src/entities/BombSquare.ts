@@ -57,10 +57,13 @@ export class BombSquare {
     }
 
     // One-time chip damage to the boss (the bomb is mainly defensive here).
+    // Skipped entirely while the boss is arriving, so a bomb thrown during the
+    // entrance doesn't silently spend its one hit on an untouchable target.
     const boss = world.boss;
     if (
       boss &&
       boss.alive &&
+      !boss.arriving &&
       !this.bossHit &&
       Math.abs(boss.x - this.x) <= this.half + boss.r &&
       Math.abs(boss.y - this.y) <= this.half + boss.r

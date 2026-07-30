@@ -1,4 +1,5 @@
 import { COLORS } from "../config";
+import { cutsceneForActor, type Cutscene } from "../content/cutscenes";
 import type { StageDef } from "../content/stages";
 import { BombSquare } from "../entities/BombSquare";
 import { Boss, type BossConfig } from "../entities/Boss";
@@ -14,7 +15,7 @@ import type { RNG } from "./RNG";
 import type { RunState } from "./RunState";
 
 /** What one world step reports up to the top-level Game state machine. */
-export type WorldEvent = "none" | "win" | "gameover";
+export type WorldEvent = "none" | "win" | "gameover" | "cutscene";
 
 /**
  * Owns the live gameplay state for a single ROOM and advances it one fixed
@@ -31,6 +32,10 @@ export class World {
 
   private readonly collision = new CollisionSystem();
   private readonly waves: WaveManager;
+  /** A story beat raised mid-room, waiting for the Game to play it. */
+  private pendingScene: Cutscene | null = null;
+  /** The boss currently making its entrance; cleared once it has landed. */
+  private bossArrival: BossConfig | null = null;
 
   constructor(
     readonly run: RunState,
@@ -61,7 +66,15 @@ export class World {
     for (const e of this.enemies) e.update(dt, this.player, this.bullets, this.rng);
     this.boss?.update(dt, this.player, this.bullets, this.rng);
 
-    this.bullets.update();
+    // The boss has finished hovering: start the fight for real.
+    if (this.bossArrival && this.boss && !this.boss.arriving) {
+      const cfg = this.bossArrival;
+      this.bossArrival = null;
+      this.bossArrived(cfg);
+    }
+
+    // Homing player shots steer toward whatever is alive in the room.
+    this.bullets.update(this.enemies, this.boss);
     for (const bomb of this.bombs) bomb.update(dt, this);
     if (this.bombs.some((b) => !b.alive)) this.bombs = this.bombs.filter((b) => b.alive);
     this.particles.update();
@@ -74,8 +87,29 @@ export class World {
 
     if (this.player.lives <= 0) return "gameover";
 
+    // A beat raised this step (something spawned or died) interrupts before the
+    // room can advance — so a boss's defeat scene plays before the room clears.
+    if (this.pendingScene) return "cutscene";
+
     if (this.waves.update(dt) === "win") return "win";
     return "none";
+  }
+
+  /**
+   * Queue a story beat for the Game to play. Marked seen immediately so a wave
+   * of five same-shaped enemies raises it once, not five times.
+   */
+  private raise(scene: Cutscene | null): void {
+    if (!scene || this.pendingScene) return;
+    this.run.seenCutscenes.add(scene.id);
+    this.pendingScene = scene;
+  }
+
+  /** Hand the queued beat to the Game (and clear it). */
+  takeCutscene(): Cutscene | null {
+    const scene = this.pendingScene;
+    this.pendingScene = null;
+    return scene;
   }
 
   private bomb(): void {
@@ -87,11 +121,27 @@ export class World {
 
   // --- spawning (called by WaveManager) ---
   spawnWave(specs: EnemySpec[]): void {
-    for (const s of specs) this.enemies.push(new Enemy(s));
+    const seen = this.run.seenCutscenes;
+    for (const s of specs) {
+      this.enemies.push(new Enemy(s));
+      this.raise(cutsceneForActor("spawn", s.shape, false, this.stage.id, seen));
+    }
   }
+  /**
+   * Bring in a boss. Nothing else happens yet: it descends and holds station,
+   * untouchable and silent, while the player reads the health bar. Its
+   * reinforcements and its entrance cutscene both wait for `bossArrived`.
+   */
   spawnBoss(cfg: BossConfig): void {
     this.boss = new Boss(cfg);
-    // Phase-1 reinforcements arrive with the boss.
+    this.bossArrival = cfg;
+  }
+
+  /** Fires once, the moment a boss finishes its entrance hold. */
+  private bossArrived(cfg: BossConfig): void {
+    // The entrance scene plays now — after the player has had a good look.
+    this.raise(cutsceneForActor("spawn", cfg.shape, true, this.stage.id, this.run.seenCutscenes));
+    // Phase-1 reinforcements only turn up once the staring contest is over.
     if (this.stage.bossAdds) this.spawnWave(this.stage.bossAdds(0));
   }
 
@@ -100,6 +150,7 @@ export class World {
     this.run.score += e.score;
     this.particles.burst(e.x, e.y, e.color, 18, 200, 1.2);
     this.renderer.shake(6);
+    this.raise(cutsceneForActor("defeat", e.shape, false, this.stage.id, this.run.seenCutscenes));
   }
   onBossPhase(): void {
     // Boss bullets persist through phase changes — no screen wipe, just a flash.
@@ -113,7 +164,10 @@ export class World {
   onBossDead(): void {
     this.run.score += 5000;
     this.bullets.clearEnemy();
-    if (this.boss) this.particles.burst(this.boss.x, this.boss.y, this.boss.color, 60, 340, 1.6);
+    if (this.boss) {
+      this.particles.burst(this.boss.x, this.boss.y, this.boss.color, 60, 340, 1.6);
+      this.raise(cutsceneForActor("defeat", this.boss.shape, true, this.stage.id, this.run.seenCutscenes));
+    }
     this.renderer.shake(26);
   }
   onPlayerHit(): void {

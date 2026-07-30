@@ -33,13 +33,13 @@ export const BOSS_STAGES: readonly StageDef[] = [
             {
               name: "Overture",
               hp: 360,
-              weapons: [{ pattern: "aimed", count: 5, spread: 0.9, interval: 0.9, speed: 150, r: 6, glow: 6 }],
+              weapons: [{ pattern: "aimed", count: 5, spread: 0.9, interval: 0.9, speed: 150, r: 6 }],
             },
             {
               name: "Spin Cycle",
               hp: 510,
               weapons: [
-                { pattern: "spiral", count: 5, interval: 0.12, speed: 140, angleStep: 0.35, r: 6, glow: 6 },
+                { pattern: "spiral", count: 5, interval: 0.12, speed: 140, angleStep: 0.35, r: 6 },
               ],
             },
             {
@@ -47,8 +47,8 @@ export const BOSS_STAGES: readonly StageDef[] = [
               name: "Supernova",
               hp: 660,
               weapons: [
-                { pattern: "spiral", count: 5, interval: 0.12, speed: 140, angleStep: 0.35, r: 6, glow: 6 },
-                { pattern: "ring", count: 14, interval: 1.0, speed: 120, angleStep: 0.2, r: 6, glow: 6 },
+                { pattern: "spiral", count: 5, interval: 0.12, speed: 140, angleStep: 0.35, r: 6 },
+                { pattern: "ring", count: 14, interval: 1.0, speed: 120, angleStep: 0.2, r: 6 },
               ],
             },
           ],

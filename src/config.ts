@@ -11,10 +11,22 @@ export const SUBTITLE = "STTR";
  * Every drawable actor and its bullets share a shape. The player (and its
  * shots) are always squares; enemies are anything BUT squares, and their
  * bullets copy their shape — so the player can read friend vs. foe at a glance.
+ *
+ * `rect` is the odd one out: it is reserved for friendly NPCs (Bar, who runs
+ * the shop) and never appears on an enemy or a bullet, so a stretched square
+ * always reads as "someone who isn't shooting at you".
  */
-export type Shape = "square" | "circle" | "triangle" | "diamond" | "pentagon" | "hexagon" | "star";
+export type Shape =
+  | "square"
+  | "circle"
+  | "triangle"
+  | "diamond"
+  | "pentagon"
+  | "hexagon"
+  | "star"
+  | "rect";
 
-/** Shapes enemies/bosses are allowed to use (never "square"). */
+/** Shapes enemies/bosses are allowed to use (never "square", never "rect"). */
 export const ENEMY_SHAPES: readonly Shape[] = ["circle", "triangle", "diamond", "pentagon", "hexagon", "star"];
 
 /** Logical play-field width in pixels. */

@@ -10,16 +10,33 @@ export interface SpawnOpts {
   r?: number;
   damage?: number;
   color?: string;
-  glow?: number;
   shape?: Shape;
   spin?: number;
   rotSpeed?: number;
-  pierce?: boolean;
+  pierce?: number;
+  pierceGain?: number;
   bounces?: number;
+  bounceGain?: number;
+  bounceFloor?: boolean;
+  turnRate?: number;
+  life?: number;
   eats?: boolean;
   growth?: number;
   maxR?: number;
 }
+
+/**
+ * Anything a homing shot can steer toward. Structural on purpose so the bullet
+ * layer never has to know about Enemy/Boss.
+ */
+export interface Target {
+  x: number;
+  y: number;
+  alive: boolean;
+}
+
+/** Shared empty target list, so the enemy pool's step allocates nothing. */
+const NO_TARGETS: readonly Target[] = [];
 
 /**
  * Owns every bullet in the world, split into two pools so collision only ever
@@ -55,27 +72,46 @@ export class BulletSystem {
     b.r = o.r ?? defR;
     b.damage = o.damage ?? 1;
     b.color = o.color ?? "#fff";
-    b.glow = o.glow ?? b.r * 1.6;
     b.shape = o.shape ?? defShape;
     b.spin = o.spin ?? 0;
     b.rot = angle;
     b.rotSpeed = o.rotSpeed ?? 0;
-    b.pierce = o.pierce ?? false;
+    b.pierce = o.pierce ?? 0;
+    b.pierceGain = o.pierceGain ?? 0;
     b.bounces = o.bounces ?? 0;
+    b.bounceGain = o.bounceGain ?? 0;
+    b.bounceFloor = o.bounceFloor ?? false;
+    b.turnRate = o.turnRate ?? 0;
+    b.life = o.life ?? 0;
     b.eats = o.eats ?? false;
     b.growth = o.growth ?? 1;
     b.maxR = o.maxR ?? 0;
     return b;
   }
 
-  update(): void {
-    this.step(this.enemy);
-    this.step(this.player);
+  /**
+   * Advance every bullet one step. `targets` are what homing player shots steer
+   * toward — enemy bullets never home, so their pool is stepped without any.
+   */
+  update(targets: readonly Target[] = NO_TARGETS, boss: Target | null = null): void {
+    this.step(this.enemy, NO_TARGETS, null);
+    this.step(this.player, targets, boss);
   }
 
-  private step(pool: Pool<Bullet>): void {
+  private step(pool: Pool<Bullet>, targets: readonly Target[], boss: Target | null): void {
     for (let i = pool.count - 1; i >= 0; i--) {
       const b = pool.items[i];
+
+      if (b.life > 0) {
+        b.life -= DT;
+        if (b.life <= 0) {
+          pool.release(i);
+          continue;
+        }
+      }
+
+      if (b.turnRate > 0) this.home(b, targets, boss);
+
       if (b.spin !== 0) {
         // Rotate the velocity vector for curving shots.
         const cos = Math.cos(b.spin);
@@ -89,22 +125,32 @@ export class BulletSystem {
       b.rot += b.rotSpeed;
       if (b.growth !== 1) b.r = Math.min(b.maxR, b.r * b.growth);
 
-      // Ricochet upgrade: reflect off left/right/top walls (never the bottom),
-      // spending one bounce per wall touched.
+      // Ricochet upgrade: reflect off the left/right/top walls — and, once the
+      // upgrade is deep enough (`bounceFloor`), off the bottom too. One bounce
+      // is spent per step, and `bounceGain` makes each rebound hit harder.
       if (b.bounces > 0) {
+        let bounced = false;
         if (b.x < b.r && b.vx < 0) {
           b.x = b.r;
           b.vx = -b.vx;
-          b.bounces--;
+          bounced = true;
         } else if (b.x > WIDTH - b.r && b.vx > 0) {
           b.x = WIDTH - b.r;
           b.vx = -b.vx;
-          b.bounces--;
+          bounced = true;
         }
         if (b.y < b.r && b.vy < 0) {
           b.y = b.r;
           b.vy = -b.vy;
+          bounced = true;
+        } else if (b.bounceFloor && b.y > HEIGHT - b.r && b.vy > 0) {
+          b.y = HEIGHT - b.r;
+          b.vy = -b.vy;
+          bounced = true;
+        }
+        if (bounced) {
           b.bounces--;
+          b.damage += b.bounceGain;
         }
       }
 
@@ -112,6 +158,47 @@ export class BulletSystem {
         pool.release(i);
       }
     }
+  }
+
+  /**
+   * Steer a homing shot toward the nearest live target, turning at most
+   * `turnRate` radians this step so splinters arc instead of snapping on.
+   * Speed is preserved; the search allocates nothing.
+   */
+  private home(b: Bullet, targets: readonly Target[], boss: Target | null): void {
+    let best: Target | null = null;
+    let bestD2 = Infinity;
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i];
+      if (!t.alive) continue;
+      const dx = t.x - b.x;
+      const dy = t.y - b.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = t;
+      }
+    }
+    if (boss && boss.alive) {
+      const dx = boss.x - b.x;
+      const dy = boss.y - b.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) best = boss;
+    }
+    if (!best) return;
+
+    const desired = Math.atan2(best.y - b.y, best.x - b.x);
+    const current = Math.atan2(b.vy, b.vx);
+    // Shortest signed angle to the target, wrapped into [-PI, PI].
+    let delta = desired - current;
+    if (delta > Math.PI) delta -= 2 * Math.PI;
+    else if (delta < -Math.PI) delta += 2 * Math.PI;
+
+    const turn = Math.max(-b.turnRate, Math.min(b.turnRate, delta));
+    const angle = current + turn;
+    const speed = Math.hypot(b.vx, b.vy);
+    b.vx = Math.cos(angle) * speed;
+    b.vy = Math.sin(angle) * speed;
   }
 
   /** Wipe all enemy bullets (bombs, boss phase transitions). */

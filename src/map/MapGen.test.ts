@@ -33,8 +33,9 @@ describe("map generation", () => {
 
       const incoming = new Map<number, number>();
       for (const node of map.nodes) {
-        // Every stage id resolves in the registry.
-        expect(STAGES[node.stageId]).toBeDefined();
+        // Every battle node's stage id resolves in the registry; shops have none.
+        if (node.kind === "shop") expect(node.stageId).toBe("");
+        else expect(STAGES[node.stageId]).toBeDefined();
 
         // Every non-final node leads somewhere in the next layer.
         if (node.layer < last) {
@@ -58,7 +59,10 @@ describe("map generation", () => {
   it("keeps edges monotonic so the drawn map has no crossings", () => {
     for (let seed = 1; seed <= 200; seed++) {
       const map = generateMap(new RNG(seed));
-      for (const ids of map.layers) {
+      for (const [layer, ids] of map.layers.entries()) {
+        // The layer below the mini-boss wires into BOTH of its rooms on
+        // purpose, so every route can choose the elite — those edges cross.
+        if (layer + 1 === map.sector.eliteLayer) continue;
         for (let i = 0; i + 1 < ids.length; i++) {
           const left = map.nodes[ids[i]].next.map((id) => map.nodes[id].col);
           const right = map.nodes[ids[i + 1]].next.map((id) => map.nodes[id].col);
@@ -75,6 +79,7 @@ describe("map generation", () => {
       const map = generateMap(new RNG(seed));
       let elites = 0;
       for (const node of map.nodes) {
+        if (node.kind === "shop") continue; // The Bar has no difficulty
         const diff = STAGES[node.stageId].difficulty;
         if (diff === "elite") {
           elites += 1;
@@ -83,6 +88,63 @@ describe("map generation", () => {
         expect(diff).toBe(LAYER_DIFFICULTY[node.layer]);
       }
       expect(elites).toBe(1);
+    }
+  });
+
+  it("offers the mini-boss to every route, and always a way around it", () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const map = generateMap(new RNG(seed));
+      const elites = map.nodes.filter((n) => n.elite);
+      expect(elites.length).toBe(1);
+
+      const elite = elites[0];
+      expect(elite.layer).toBe(map.sector.eliteLayer);
+      expect(STAGES[elite.stageId].difficulty).toBe("elite");
+
+      // Its layer holds exactly two rooms: the mini-boss and the way past.
+      const layer = map.layers[elite.layer];
+      expect(layer.length).toBe(2);
+      const bypass = layer.map((id) => map.nodes[id]).find((n) => !n.elite)!;
+      expect(bypass).toBeDefined();
+      expect(STAGES[bypass.stageId]?.difficulty ?? "shop").not.toBe("elite");
+
+      // EVERY room on the layer below reaches BOTH — so no route is denied the
+      // mini-boss, and no route is forced into it.
+      for (const id of map.layers[elite.layer - 1]) {
+        expect(map.nodes[id].next).toContain(elite.id);
+        expect(map.nodes[id].next).toContain(bypass.id);
+      }
+    }
+  });
+
+  it("places exactly one Bar, never on the elite node, always with a way past it", () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const map = generateMap(new RNG(seed));
+      const shops = map.nodes.filter((n) => n.kind === "shop");
+      expect(shops.length).toBe(1);
+
+      const shop = shops[0];
+      // The shop's layer must still offer at least one room to fight in, so a
+      // player who wants the upgrade pick is never forced through the shop.
+      const siblings = map.layers[shop.layer].map((id) => map.nodes[id]);
+      expect(siblings.some((n) => n.kind === "battle")).toBe(true);
+      // It never eats the run's only elite room, and never the boss.
+      expect(shop.elite).toBe(false);
+      expect(shop.layer).toBeLessThan(map.layers.length - 1);
+    }
+  });
+
+  it("still reaches the boss without ever entering the shop", () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const map = generateMap(new RNG(seed));
+      // Walk the DAG using battle nodes only; the boss must stay reachable.
+      let frontier = map.layers[0].map((id) => map.nodes[id]).filter((n) => n.kind === "battle");
+      for (let layer = 1; layer < map.layers.length; layer++) {
+        const next = new Set<number>();
+        for (const node of frontier) for (const id of node.next) next.add(id);
+        frontier = [...next].map((id) => map.nodes[id]).filter((n) => n.kind === "battle");
+        expect(frontier.length).toBeGreaterThan(0);
+      }
     }
   });
 });

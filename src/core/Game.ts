@@ -1,12 +1,14 @@
 import { DT } from "../config";
-import { cutsceneForRoom } from "../content/cutscenes";
+import { cutsceneForRoom, cutsceneForShop } from "../content/cutscenes";
 import type { PowerUp } from "../content/powerups";
-import { STAGES } from "../content/stages";
+import { withEscapedElite } from "../content/sectors";
+import { STAGES, type StageDef } from "../content/stages";
 import type { Renderer } from "../render/Renderer";
 import { CutscenePlayer } from "../ui/CutscenePlayer";
 import { Hud } from "../ui/Hud";
 import { MapScreen } from "../ui/MapScreen";
 import { Overlay } from "../ui/Overlay";
+import { ShopScreen } from "../ui/ShopScreen";
 import type { Input } from "./Input";
 import { randomSeed } from "./RNG";
 import { RunState } from "./RunState";
@@ -17,6 +19,7 @@ const enum State {
   Map,
   Cutscene,
   Playing,
+  Shop,
   Powerup,
   Paused,
   GameOver,
@@ -39,7 +42,10 @@ export class Game {
   private readonly hud = new Hud();
   private readonly overlay = new Overlay();
   private readonly mapScreen = new MapScreen();
+  private readonly shopScreen = new ShopScreen();
   private readonly cutscene = new CutscenePlayer();
+  /** Where the Cutscene state returns to once the dialog is dismissed. */
+  private afterCutscene = State.Playing;
 
   constructor(
     private readonly input: Input,
@@ -58,16 +64,53 @@ export class Game {
     const run = this.run!;
     run.map.enter(nodeId);
     run.player.resetForRoom();
-    this.world = new World(run, STAGES[run.map.currentNode!.stageId], this.renderer);
-    // Story beats interrupt on the way in: the room freezes behind the dialog.
-    const scene = cutsceneForRoom(this.world.stage, run.seenCutscenes);
-    if (scene) {
-      run.seenCutscenes.add(scene.id);
-      this.cutscene.start(scene);
-      this.state = State.Cutscene;
-    } else {
-      this.state = State.Playing;
+
+    // The Bar is a room with no fight in it: no World, no upgrade pick.
+    if (run.map.currentNode!.kind === "shop") {
+      this.world = null;
+      this.shopScreen.reset();
+      this.enterOrSkipCutscene(cutsceneForShop(run.seenCutscenes), State.Shop);
+      return;
     }
+
+    this.world = new World(run, this.stageFor(run.map.currentNode!.stageId), this.renderer);
+    this.enterOrSkipCutscene(cutsceneForRoom(this.world.stage, run.seenCutscenes), State.Playing);
+  }
+
+  /**
+   * The stage to actually play for `stageId`. Normally that's the authored
+   * stage — but if this is the sector's boss room and its mini-boss is still
+   * alive out there, the mini-boss is spliced in just before the finale.
+   */
+  private stageFor(stageId: string): StageDef {
+    const run = this.run!;
+    const stage = STAGES[stageId];
+    const elite = run.map.eliteNode;
+    if (stage.difficulty !== "boss" || !run.map.eliteEscaped || !elite) return stage;
+    return withEscapedElite(stage, STAGES[elite.stageId], run.map.sector.escapedEliteGap);
+  }
+
+  /**
+   * Play `scene` (once per run) before landing in `next`, or go straight there
+   * when there's nothing to say. Story beats interrupt on the way IN, so the
+   * room or the shop sits frozen behind the dialog.
+   */
+  private enterOrSkipCutscene(scene: ReturnType<typeof cutsceneForShop>, next: State): void {
+    this.afterCutscene = next;
+    if (!scene) {
+      this.state = next;
+      return;
+    }
+    this.run!.seenCutscenes.add(scene.id);
+    this.cutscene.start(scene);
+    this.state = State.Cutscene;
+  }
+
+  /** Leaving The Bar: the room counts as done, but pays no upgrade. */
+  private leaveShop(): void {
+    this.run!.map.markCleared();
+    this.mapScreen.reset();
+    this.state = State.Map;
   }
 
   private onRoomCleared(): void {
@@ -77,11 +120,11 @@ export class Game {
       this.state = State.Win;
       return;
     }
-    // Elite rooms pay double picks plus a bomb; every other room pays one pick.
+    // Elite rooms pay double picks; every other room pays one. Bombs and lives
+    // are deliberately not a room reward any more — Bar sells those.
     if (this.world!.stage.difficulty === "elite") {
-      run.player.stats.bombs += 1;
       this.picksLeft = 2;
-      this.powerupTitle = "ELITE DOWN (+1 BOMB) — CHOOSE TWO UPGRADES";
+      this.powerupTitle = "ELITE DOWN — CHOOSE TWO UPGRADES";
     } else {
       this.picksLeft = 1;
       this.powerupTitle = "ROOM CLEARED — CHOOSE AN UPGRADE";
@@ -104,7 +147,11 @@ export class Game {
       }
 
       case State.Cutscene:
-        if (this.cutscene.step(input)) this.state = State.Playing;
+        if (this.cutscene.step(input)) this.state = this.afterCutscene;
+        break;
+
+      case State.Shop:
+        if (this.shopScreen.step(input, this.run!, DT)) this.leaveShop();
         break;
 
       case State.Playing: {
@@ -115,6 +162,9 @@ export class Game {
         const ev = this.world!.update(DT, input);
         if (ev === "win") this.onRoomCleared();
         else if (ev === "gameover") this.state = State.GameOver;
+        // Something spawned or died that has a story beat attached: freeze the
+        // room behind the dialog, then drop straight back into the fight.
+        else if (ev === "cutscene") this.enterOrSkipCutscene(this.world!.takeCutscene(), State.Playing);
         break;
       }
 
@@ -169,10 +219,15 @@ export class Game {
         this.mapScreen.draw(r, this.run!.map, this.run!);
         break;
       case State.Cutscene:
+        // Bar's counter shows through his own intro; combat rooms show the world.
+        if (this.afterCutscene === State.Shop) this.shopScreen.draw(r, this.run!);
         this.cutscene.draw(r);
         break;
+      case State.Shop:
+        this.shopScreen.draw(r, this.run!);
+        break;
       case State.Powerup:
-        this.overlay.powerup(r, this.choices, this.powerupTitle);
+        this.overlay.powerup(r, this.choices, this.run!.player, this.powerupTitle);
         break;
       case State.Paused:
         this.overlay.paused(r);

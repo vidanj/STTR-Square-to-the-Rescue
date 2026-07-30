@@ -23,7 +23,6 @@ export interface Weapon {
   angleStep: number;
   shape: Shape;
   color: string;
-  glow: number;
   r: number;
   damage: number;
 }
@@ -40,7 +39,6 @@ export function makeWeapon(shape: Shape, color: string, p: Partial<Weapon> = {})
     angleStep: 0.3,
     shape,
     color,
-    glow: 5,
     r: 5,
     damage: 1,
     ...p,
