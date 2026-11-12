@@ -18,6 +18,9 @@ const TEXT_SIZE = 16;
 const BACKDROP_BLUR = 7;
 const BACKDROP_DIM = "rgba(5,6,13,0.72)";
 
+/** Keys (and the left mouse button) that advance the dialog one line. */
+export const ADVANCE_KEYS = ["Enter", "KeyZ", "Space", "Mouse0"] as const;
+
 /**
  * Plays one Cutscene: the frozen world sits behind a dim overlay while shape
  * portraits talk through a dialog box. The current speaker is lit and bobbing;
@@ -36,7 +39,7 @@ export class CutscenePlayer {
   /** Advance on confirm; true once the scene has finished. */
   step(input: Input): boolean {
     if (!this.scene) return true;
-    if (input.pressed("Enter", "KeyZ", "Space", "Mouse0")) {
+    if (input.pressed(...ADVANCE_KEYS)) {
       this.line += 1;
       if (this.line >= this.scene.lines.length) {
         this.scene = null;

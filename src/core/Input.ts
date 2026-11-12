@@ -97,4 +97,10 @@ const GAME_KEYS = new Set([
   "Digit1",
   "Digit2",
   "Digit3",
+  // Sound: mute and volume.
+  "KeyM",
+  "Minus",
+  "Equal",
+  "NumpadSubtract",
+  "NumpadAdd",
 ]);

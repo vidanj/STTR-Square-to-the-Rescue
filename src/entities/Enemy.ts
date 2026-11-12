@@ -53,16 +53,17 @@ export class Enemy {
     this.weapon = makeWeapon(spec.shape, spec.color, spec.weapon);
   }
 
-  update(dt: number, player: Player, bs: BulletSystem, rng: RNG): void {
+  /** Advance one step; true if the enemy fired this step (for muzzle sfx). */
+  update(dt: number, player: Player, bs: BulletSystem, rng: RNG): boolean {
     this.t += dt;
     if (this.y < this.targetY) {
       this.y = Math.min(this.targetY, this.y + this.entrySpeed * dt);
-    } else {
-      // Hover: gentle bob + optional horizontal sway.
-      this.x = this.baseX + Math.sin(this.t * 1.4) * this.sway;
-      this.y = this.targetY + Math.sin(this.t * 2.2) * 4;
-      fireWeapon(this.weapon, dt, bs, this.x, this.y, player.x, player.y, rng);
+      return false;
     }
+    // Hover: gentle bob + optional horizontal sway.
+    this.x = this.baseX + Math.sin(this.t * 1.4) * this.sway;
+    this.y = this.targetY + Math.sin(this.t * 2.2) * 4;
+    return fireWeapon(this.weapon, dt, bs, this.x, this.y, player.x, player.y, rng);
   }
 
   draw(r: Renderer): void {

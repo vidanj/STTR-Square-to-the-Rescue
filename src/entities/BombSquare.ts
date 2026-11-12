@@ -52,6 +52,8 @@ export class BombSquare {
         if (e.hp <= 0) {
           e.alive = false;
           world.onEnemyKilled(e);
+        } else {
+          world.audio.sfx.play("hit", { shape: e.shape, frac: e.hp / e.maxHp, size: e.r });
         }
       }
     }

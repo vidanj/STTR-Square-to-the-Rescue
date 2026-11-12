@@ -24,6 +24,7 @@ export class Overlay {
       "Move: WASD / Arrows      Focus: Shift",
       "Shoot: Z / Space / Left-Click",
       "Bomb: X / Right-Click     Pause: Esc",
+      "Mute: M      Volume: − / +",
       "",
       "You are a Square. Everything else isn't.",
       "Chart your route on the sector map,",
@@ -79,12 +80,19 @@ export class Overlay {
     });
   }
 
-  paused(r: Renderer): void {
+  /** `sound` is the current level, e.g. "VOLUME 80%" or "SOUND OFF". */
+  paused(r: Renderer, sound: string): void {
     r.overlay("rgba(5,6,13,0.7)");
     this.title(r, "PAUSED");
     r.text("Press ESC to resume", WIDTH / 2, HEIGHT * 0.5, {
       align: "center",
       size: 15,
+      color: COLORS.textDim,
+    });
+    r.text(sound, WIDTH / 2, HEIGHT * 0.5 + 40, { align: "center", size: 14, bold: true });
+    r.text("M mute    − / + volume", WIDTH / 2, HEIGHT * 0.5 + 62, {
+      align: "center",
+      size: 12,
       color: COLORS.textDim,
     });
   }

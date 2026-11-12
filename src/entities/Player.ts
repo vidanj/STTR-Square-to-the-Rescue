@@ -80,6 +80,8 @@ export class Player {
   lives = START_LIVES;
   invuln = 0;
   focus = false;
+  /** True on the steps a volley went out — the World turns it into a sound. */
+  firedThisStep = false;
   private fireTimer = 0;
   private volley = 0;
   readonly stats = makePlayerStats();
@@ -188,8 +190,10 @@ export class Player {
     this.y = clamp(this.y + dy * speed * dt, SHIP_R, HEIGHT - SHIP_R);
 
     this.fireTimer -= dt;
+    this.firedThisStep = false;
     if (input.fire && this.fireTimer <= 0) {
       this.fire(bs);
+      this.firedThisStep = true;
       this.fireTimer = this.stats.fireInterval;
     }
 

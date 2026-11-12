@@ -66,6 +66,7 @@ export class CollisionSystem {
         const b = enemy.items[j];
         if (circleHit(s.x, s.y, s.r, b.x, b.y, b.r)) {
           world.particles.burst(b.x, b.y, COLORS.eat, 3, 90, 0.5);
+          world.audio.sfx.play("eat");
           enemy.release(j);
         }
       }
@@ -86,6 +87,7 @@ export class CollisionSystem {
         const b = enemy.items[j];
         if (circleHit(p.x, p.y, p.r, b.x, b.y, b.r)) {
           world.particles.burst(b.x, b.y, p.color, 3, 90, 0.5);
+          world.audio.sfx.play("eat");
           enemy.release(j);
         }
       }
@@ -110,6 +112,8 @@ export class CollisionSystem {
           if (e.hp <= 0) {
             e.alive = false;
             world.onEnemyKilled(e);
+          } else {
+            world.audio.sfx.play("hit", { shape: e.shape, frac: e.hp / e.maxHp, size: e.r });
           }
           if (b.pierce > 0) {
             b.pierce -= 1;
@@ -138,6 +142,10 @@ export class CollisionSystem {
         world.particles.burst(b.x, b.y, boss.color, 4, 120, 0.6);
         if (result === "phase") world.onBossPhase();
         else if (result === "dead") world.onBossDead();
+        // Between phases the boss shrugs shots off — no hit sound for those.
+        else if (!boss.transitioning) {
+          world.audio.sfx.play("hit", { shape: boss.shape, frac: boss.healthFrac, boss: true });
+        }
         if (b.pierce > 0) {
           b.pierce -= 1;
           b.damage += b.pierceGain;

@@ -4,6 +4,7 @@ import { SHAPE_COLOR } from "../content/stagekit";
 import type { Input } from "../core/Input";
 import type { RunState } from "../core/RunState";
 import type { Renderer } from "../render/Renderer";
+import type { BuyResult } from "../systems/ShopSystem";
 
 // Bar stands behind the counter; the stock is laid out below it.
 const BAR_Y = 158;
@@ -26,6 +27,8 @@ const MESSAGE_TIME = 2.2; // seconds Bar's last remark stays up
 export class ShopScreen {
   private messageTimer = 0;
   private messageColor: string = COLORS.text;
+  /** What a purchase attempt did this step (null if none) — the Game's cue. */
+  lastResult: BuyResult | null = null;
 
   /** Called on entry so a fresh visit doesn't show the last one's message. */
   reset(): void {
@@ -35,6 +38,7 @@ export class ShopScreen {
   /** Advance one input step; true once the player is done shopping. */
   step(input: Input, run: RunState, dt: number): boolean {
     if (this.messageTimer > 0) this.messageTimer -= dt;
+    this.lastResult = null;
 
     const stock = run.shop.stock;
     for (let i = 0; i < stock.length && i < 9; i++) {
@@ -44,6 +48,7 @@ export class ShopScreen {
       const price = run.shop.priceOf(item);
       const result = run.shop.buy(item, run.player, run.score);
       if (result === "ok") run.score -= price;
+      this.lastResult = result;
       this.messageTimer = MESSAGE_TIME;
       this.messageColor = result === "ok" ? COLORS.good : COLORS.hurtbox;
     }

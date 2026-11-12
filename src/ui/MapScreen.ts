@@ -45,6 +45,11 @@ export class MapScreen {
     this.sel = 0;
   }
 
+  /** Index of the highlighted room (the Game listens for it moving). */
+  get selection(): number {
+    return this.sel;
+  }
+
   /** Advance one input step; returns the chosen room, or null while browsing. */
   step(input: Input, map: GameMap): MapNode | null {
     const reach = map.reachable;

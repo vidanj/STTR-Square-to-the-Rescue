@@ -95,12 +95,13 @@ export class Boss {
     return below / this.totalMax;
   }
 
-  update(dt: number, player: Player, bs: BulletSystem, rng: RNG): void {
+  /** Advance one step; true if any weapon fired this step (for muzzle sfx). */
+  update(dt: number, player: Player, bs: BulletSystem, rng: RNG): boolean {
     this.t += dt;
     if (this.entering) {
       this.y = Math.min(ENTRY_Y, this.y + ENTRY_SPEED * dt);
       if (this.y >= ENTRY_Y) this.entering = false;
-      return;
+      return false;
     }
     if (this.hold > 0) {
       // Landed but not yet in the fight: hold centre and just breathe, so the
@@ -108,7 +109,7 @@ export class Boss {
       this.hold -= dt;
       this.x = WIDTH / 2;
       this.y = ENTRY_Y + Math.sin(this.t * 1.3) * 4;
-      return;
+      return false;
     }
     // Weave horizontally, bob vertically.
     this.x = WIDTH / 2 + Math.sin(this.t * 0.6) * (WIDTH * 0.32);
@@ -116,9 +117,13 @@ export class Boss {
 
     if (this.transition > 0) {
       this.transition -= dt;
-      return; // hold fire during the flash
+      return false; // hold fire during the flash
     }
-    for (const w of this.weapons) fireWeapon(w, dt, bs, this.x, this.y, player.x, player.y, rng);
+    let fired = false;
+    for (const w of this.weapons) {
+      if (fireWeapon(w, dt, bs, this.x, this.y, player.x, player.y, rng)) fired = true;
+    }
+    return fired;
   }
 
   /** Apply damage; advances phases and reports what happened. */

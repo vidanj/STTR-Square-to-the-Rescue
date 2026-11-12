@@ -39,6 +39,24 @@ export const DT = 1 / 60;
 /** Upper bound on sub-steps per frame so a stall can't spiral. */
 export const MAX_STEPS = 5;
 
+/**
+ * Audio mix. Every sound and every note of music is synthesized in code (see
+ * `src/audio/`) — these are the knobs, not asset paths.
+ */
+export const AUDIO = {
+  /** Default master volume, 0..1. The player's own choice is remembered. */
+  volume: 0.8,
+  /** How much one −/+ press moves the master volume. */
+  volumeStep: 0.1,
+  /** Bus levels under the master. Music sits back so combat cues read. */
+  music: 0.38,
+  sfx: 1,
+  /** Seconds to crossfade from one music track to the next. */
+  crossfade: 0.8,
+  /** Most sound effects allowed at once; past this, minor ones are dropped. */
+  maxVoices: 24,
+} as const;
+
 /** Neon-ish palette used across renderer + UI. */
 export const COLORS = {
   bg: "#05060d",

@@ -1,3 +1,4 @@
+import type { AudioEngine } from "../audio/AudioEngine";
 import { COLORS } from "../config";
 import { cutsceneForActor, type Cutscene } from "../content/cutscenes";
 import type { StageDef } from "../content/stages";
@@ -41,6 +42,8 @@ export class World {
     readonly run: RunState,
     readonly stage: StageDef,
     private readonly renderer: Renderer,
+    /** Exposed (like `particles`) so systems can cue sounds where things happen. */
+    readonly audio: AudioEngine,
   ) {
     this.waves = new WaveManager(stage.script, this);
   }
@@ -62,9 +65,14 @@ export class World {
   update(dt: number, input: Input): WorldEvent {
     if (input.pressed("KeyX", "Mouse2") && this.player.stats.bombs > 0) this.bomb();
 
+    const sfx = this.audio.sfx;
     this.player.update(dt, input, this.bullets);
-    for (const e of this.enemies) e.update(dt, this.player, this.bullets, this.rng);
-    this.boss?.update(dt, this.player, this.bullets, this.rng);
+    if (this.player.firedThisStep) sfx.play("shoot", { focus: this.player.focus });
+    for (const e of this.enemies) {
+      if (e.update(dt, this.player, this.bullets, this.rng)) sfx.play("enemyShot", { shape: e.shape });
+    }
+    const boss = this.boss;
+    if (boss?.update(dt, this.player, this.bullets, this.rng)) sfx.play("enemyShot", { shape: boss.shape, boss: true });
 
     // The boss has finished hovering: start the fight for real.
     if (this.bossArrival && this.boss && !this.boss.arriving) {
@@ -117,6 +125,7 @@ export class World {
     this.bombs.push(new BombSquare(this.player.x, this.player.y - 12));
     this.particles.burst(this.player.x, this.player.y - 12, COLORS.player, 12, 160, 0.8);
     this.renderer.shake(6);
+    this.audio.sfx.play("bomb");
   }
 
   // --- spawning (called by WaveManager) ---
@@ -139,6 +148,7 @@ export class World {
 
   /** Fires once, the moment a boss finishes its entrance hold. */
   private bossArrived(cfg: BossConfig): void {
+    this.audio.sfx.play("bossLand", { shape: cfg.shape });
     // The entrance scene plays now — after the player has had a good look.
     this.raise(cutsceneForActor("spawn", cfg.shape, true, this.stage.id, this.run.seenCutscenes));
     // Phase-1 reinforcements only turn up once the staring contest is over.
@@ -150,12 +160,14 @@ export class World {
     this.run.score += e.score;
     this.particles.burst(e.x, e.y, e.color, 18, 200, 1.2);
     this.renderer.shake(6);
+    this.audio.sfx.play("kill", { shape: e.shape, size: e.r });
     this.raise(cutsceneForActor("defeat", e.shape, false, this.stage.id, this.run.seenCutscenes));
   }
   onBossPhase(): void {
     // Boss bullets persist through phase changes — no screen wipe, just a flash.
     if (this.boss) {
       this.particles.burst(this.boss.x, this.boss.y, this.boss.color, 32, 260, 1.3);
+      this.audio.sfx.play("bossPhase", { shape: this.boss.shape });
       // Each new phase brings a tougher squad of reinforcements.
       if (this.stage.bossAdds) this.spawnWave(this.stage.bossAdds(this.boss.phaseNumber - 1));
     }
@@ -166,6 +178,7 @@ export class World {
     this.bullets.clearEnemy();
     if (this.boss) {
       this.particles.burst(this.boss.x, this.boss.y, this.boss.color, 60, 340, 1.6);
+      this.audio.sfx.play("bossDown", { shape: this.boss.shape });
       this.raise(cutsceneForActor("defeat", this.boss.shape, true, this.stage.id, this.run.seenCutscenes));
     }
     this.renderer.shake(26);
@@ -175,6 +188,8 @@ export class World {
     // the escape window, not a screen wipe.
     this.particles.burst(this.player.x, this.player.y, COLORS.player, 26, 240, 1.3);
     this.renderer.shake(16);
+    this.audio.sfx.play("hurt");
+    this.audio.hurtDip();
   }
 
   draw(r: Renderer): void {
