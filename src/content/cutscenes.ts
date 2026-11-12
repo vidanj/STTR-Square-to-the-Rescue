@@ -144,7 +144,7 @@ export const CUTSCENES: readonly Cutscene[] = [
       { actor: "bar", text: "THE Bar. I'm Bar. It's my bar. Ask me the joke, I dare you." },
       { actor: "squero", text: "You're a rectangle." },
       { actor: "bar", text: "I'm a square who put in the hours, kid. Stretched myself thin." },
-      { actor: "bar", text: "Points on the counter and I'll patch that plating. No credit. No refunds." },
+      { actor: "bar", text: "Points on the counter and I'll patch you up. No credit. No refunds." },
       { actor: "squero", text: "Everyone out there is trying to kill me and you're charging me?" },
       { actor: "bar", text: "Everyone out there isn't running a business. What'll it be?" },
     ],
@@ -174,7 +174,7 @@ export const CUTSCENES: readonly Cutscene[] = [
     lines: [
       { actor: "prism", text: "LADY ASTRA! I have tracked the square across the sector to lay it at your points!" },
       { actor: "astra", text: "Who is that?" },
-      { actor: "prism", text: "It's PRISM! Your Prisimp! From the corridor!" },
+      { actor: "prism", text: "It's PRISM! Your PRISIMP! From the corridor!" },
       { actor: "astra", text: "I have a corridor?" },
       { actor: "squero", text: "You skipped a whole room to be ignored in a nicer one." },
       { actor: "prism", text: "I am WARMING UP for her." },
@@ -214,7 +214,7 @@ export const CUTSCENES: readonly Cutscene[] = [
     lines: [
       { actor: "squero", text: "So you're the one bending every shape in this sector." },
       { actor: "astra", text: "They bend themselves, darling. I simply stand here having five points." },
-      { actor: "astra", text: "You only have four." },
+      { actor: "astra", text: "And you only have four." },
       { actor: "squero", text: "Four is plenty." },
     ],
   },
