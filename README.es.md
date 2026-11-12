@@ -2,6 +2,8 @@
 
 [English](README.md) · **Español**
 
+**▶ [Jugar en línea](https://vidanj.github.io/STTR-Square-to-the-Rescue/)** · [Propuesta del proyecto (PDF)](docs/Propuesta-STTR.pdf) · [Propuesta (Word)](docs/Propuesta-STTR.docx) · [Guion del video explicativo](docs/guion-video.md) · [Licencia MIT](LICENSE)
+
 Un **bullet-hell roguelike** al estilo Touhou en el que eres un simple **Cuadrado** y
 cada enemigo es *cualquier otra figura*. El giro que mantiene la pantalla legible:
 **cada bala toma la forma de quien la disparó** — tus disparos son cuadraditos y los de
@@ -108,8 +110,8 @@ The Bar con tu puntuación:
 
 Breves **escenas** estilo novela visual presentan al elenco — Squero (tú), Bar, Prism y
 Astra — en los primeros encuentros, las entradas y las derrotas de los jefes. Cada una
-se reproduce una vez por partida. Guía para escribirlas:
-[DOCS/cutscenes.md](DOCS/cutscenes.md) (en inglés).
+se reproduce una vez por partida. Las escenas se definen como datos en
+`src/content/cutscenes.ts`.
 
 ## Arquitectura (dónde está cada cosa)
 
@@ -143,10 +145,6 @@ se reproduce una vez por partida. Guía para escribirlas:
   tranquilo, las salas un bucle de combate que se intensifica con la dificultad, y los
   jefes una pista que escala en cada fase. The Bar tiene su bucle de lounge. World,
   CollisionSystem y BombSquare disparan los efectos junto a sus ráfagas de partículas.
-
-Más detalle (en inglés): [.CLAUDE/structure.md](.CLAUDE/structure.md),
-[.CLAUDE/design-rules.md](.CLAUDE/design-rules.md),
-[.CLAUDE/commands.md](.CLAUDE/commands.md).
 
 ### Reglas de diseño a respetar al ampliar el juego
 
@@ -189,3 +187,8 @@ Más detalle (en inglés): [.CLAUDE/structure.md](.CLAUDE/structure.md),
 - **Escenas** — escenas de novela visual para Bar, Prism y Astra, con diálogos pulidos.
 - **Entradas de jefe** — los jefes llegan y son inmunes un momento antes de atacar.
 - **Pantalla de carga** y **despliegue en GitHub Pages**.
+
+## Licencia
+
+Código liberado bajo la [Licencia MIT](LICENSE): cualquiera puede jugarlo, estudiarlo,
+modificarlo y redistribuirlo, siempre que conserve la atribución.

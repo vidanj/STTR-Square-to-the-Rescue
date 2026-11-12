@@ -2,6 +2,8 @@
 
 **English** · [Español](README.es.md)
 
+**▶ [Play it online](https://vidanj.github.io/STTR-Square-to-the-Rescue/)** · [Project proposal (Spanish, PDF)](docs/Propuesta-STTR.pdf) · [Code walkthrough video script (Spanish)](docs/guion-video.md) · [MIT License](LICENSE)
+
 A Touhou-style **roguelike bullet-hell** where you are a plain **Square** and every
 enemy is *some other shape*. The twist that keeps the screen readable: **every bullet
 takes the shape of whoever fired it** — your shots are little squares, an enemy's shots
@@ -102,7 +104,7 @@ your score:
 
 Short visual-novel **cutscenes** introduce the cast — Squero (you), Bar, Prism and
 Astra — on first meetings, boss entrances and defeats. Each plays once per run.
-Authoring guide: [DOCS/cutscenes.md](DOCS/cutscenes.md).
+The scenes live as data in `src/content/cutscenes.ts`.
 
 ## Architecture (where things live)
 
@@ -133,10 +135,6 @@ Authoring guide: [DOCS/cutscenes.md](DOCS/cutscenes.md).
   a combat loop that drives harder with difficulty, and bosses play a track that
   escalates with each phase. The Bar plays a lounge loop. World, CollisionSystem and
   BombSquare cue effects right beside their particle bursts.
-
-More detail: [.CLAUDE/structure.md](.CLAUDE/structure.md),
-[.CLAUDE/design-rules.md](.CLAUDE/design-rules.md),
-[.CLAUDE/commands.md](.CLAUDE/commands.md).
 
 ### Design rules to preserve when extending
 
@@ -173,3 +171,8 @@ More detail: [.CLAUDE/structure.md](.CLAUDE/structure.md),
 - **Cutscenes** — visual-novel scenes for Bar, Prism and Astra, with dialog polish.
 - **Boss entrances** — bosses arrive and stay immune briefly before attacking.
 - **Loading screen** and **GitHub Pages deployment**.
+
+## License
+
+Released under the [MIT License](LICENSE) — free to play, study, modify and
+redistribute with attribution.
